@@ -65,5 +65,5 @@ Create the name of the service account to use
 {{- end }}
 
 {{- define "harness-delegate.accountIdShort" -}}
-{{ regexReplaceAll "[0-9]" .Values.accountId "" | lower | trunc 5 }}
+{{ regexReplaceAll "[0-9_-]" .Values.accountId "" | lower | trunc 5 }}
 {{- end }}
