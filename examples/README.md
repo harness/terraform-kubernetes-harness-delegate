@@ -1,29 +1,8 @@
-# Basic
+# Examples
 
-The code in this example shows how to use the module with basic configuration.
+Please note - the examples provided serve two primary means:
 
-## Requirements
+- Show users working examples of the various ways in which the module can be configured and features supported
+- A means of testing/validating module changes
 
-No requirements.
-
-## Providers
-
-No providers.
-
-## Modules
-
-| Name | Source | Version |
-|------|--------|---------|
-| <a name="module_delegate"></a> [delegate](#module\_delegate) | ../. | n/a |
-
-## Resources
-
-No resources.
-
-## Inputs
-
-No inputs.
-
-## Outputs
-
-No outputs.
+Please do not mistake the examples provided as "best practices". It is up to users to consult the AWS service documentation for best practices, usage recommendations, etc.
