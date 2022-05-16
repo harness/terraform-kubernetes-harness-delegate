@@ -38,6 +38,7 @@ helm.sh/chart: {{ include "harness-delegate.chart" . }}
 harness.io/app: harness-delegate
 harness.io/account: {{ include "harness-delegate.accountIdShort" . }}
 harness.io/name: {{ include "harness-delegate.name" . }}
+harness.io/release-name: {{ .Release.Name }}
 {{ include "harness-delegate.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
