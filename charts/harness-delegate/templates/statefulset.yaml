@@ -14,10 +14,11 @@ spec:
   serviceName: ""    
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
       annotations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        harness.io/release-name: {{ .Release.Name }}
+        {{- with .Values.podAnnotations }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
         {{- include "harness-delegate.selectorLabels" . | nindent 8 }}
     spec:
