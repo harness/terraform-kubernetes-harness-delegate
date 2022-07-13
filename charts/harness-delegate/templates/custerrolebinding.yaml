@@ -5,7 +5,7 @@ metadata:
   name: {{ include "harness-delegate.fullname" . }}-cluster-admin
 subjects:
   - kind: ServiceAccount
-    name: default
+    name: {{ include "harness-delegate.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
