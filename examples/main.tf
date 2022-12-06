@@ -3,10 +3,10 @@ module "delegate" {
   version = "0.1.1"
 
   account_id = "ABC123"
-  account_secret = "XYZ789"
-  delegate_profile = "DEF456"
+  delegate_token = "XYZ789"
   delegate_name = "example"
-  namespace = "foo"
+  namespace = "harness-delegate-ng"
+  manager_endpoint = "https://app.harness.io/gratis"
 
   # Additional optional values to pass to the helm chart
   values = yamlencode({
