@@ -13,7 +13,7 @@ variable "namespace" {
 variable "delegate_image" {
   description = "The image of delegate."
   type        = string
-  default     = "harness/delegate:22.11.77611"
+  default     = ""
 }
 
 variable "delegate_name" {
@@ -84,5 +84,5 @@ variable "no_proxy" {
 variable "values" {
   description = "Additional values to pass to the helm chart. Values will be merged, in order, as Helm does with multiple -f options"
   type        = string
-  //default     = ""
+  default     = ""
 }
