@@ -10,18 +10,18 @@ resource "helm_release" "delegate" {
 
 locals {
   values = yamlencode({
-    accountId       = var.account_id,
-    delegateToken   = var.delegate_token,
-    managerEndpoint = var.manager_endpoint,
-    namespace       = var.namespace,
-    delegateName    = var.delegate_name,
-    dockerImage     = var.delegate_image,
-    proxyUser       = var.proxy_user,
-    proxyPassword   = var.proxy_password,
-    proxyHost       = var.proxy_host,
-    proxyPort       = var.proxy_port,
-    proxyScheme     = var.proxy_scheme,
-    noProxy         = var.no_proxy
+    accountId            = var.account_id,
+    delegateToken        = var.delegate_token,
+    managerEndpoint      = var.manager_endpoint,
+    namespace            = var.namespace,
+    delegateName         = var.delegate_name,
+    delegateDockerImage  = var.delegate_image,
+    proxyUser            = var.proxy_user,
+    proxyPassword        = var.proxy_password,
+    proxyHost            = var.proxy_host,
+    proxyPort            = var.proxy_port,
+    proxyScheme          = var.proxy_scheme,
+    noProxy              = var.no_proxy
   })
 }
 
