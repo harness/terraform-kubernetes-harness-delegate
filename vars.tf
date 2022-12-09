@@ -1,19 +1,25 @@
 variable "helm_repository" {
   description = "The Helm repository to use."
   type        = string
-  default     = ""
+  default     = "https://app.harness.io/storage/harness-download/harness-helm-charts/"
 }
 
 variable "namespace" {
   description = "The namespace to deploy the Harness delegate to."
   type        = string
-  default     = "harness-delegate"
+  default     = "harness-delegate-ng"
+}
+
+variable "delegate_image" {
+  description = "The image of delegate."
+  type        = string
+  default     = ""
 }
 
 variable "delegate_name" {
   description = "The name of the Harness delegate."
   type        = string
-  default     = "harness-delegate"
+  // default     = "harness-delegate"
 }
 
 variable "account_id" {
@@ -21,15 +27,16 @@ variable "account_id" {
   type        = string
 }
 
-variable "account_secret" {
+variable "delegate_token" {
   description = "The account secret to use for the Harness delegate."
   type        = string
   // sensitive = true
 }
 
-variable "delegate_profile" {
-  description = "The ID of the delegate profile to use."
+variable "manager_endpoint" {
+  description = "The endpoint of Harness Manager."
   type        = string
+  // default     = "https://app.harness.io/gratis"
 }
 
 variable "proxy_user" {
@@ -46,16 +53,32 @@ variable "proxy_password" {
   default = ""
 }
 
-variable "irsa_enabled" {
-  description = "Whether to enable IRSA for the Harness delegate."
-  type        = bool
-  default     = false
+variable "proxy_host" {
+  description = "The proxy host."
+  type        = string
+  // sensitive = true
+  default = ""
 }
 
-variable "irsa_role_arn" {
-  description = "The ARN of the role to use for IRSA for the Harness delegate."
+variable "proxy_port" {
+  description = "The port of the proxy"
   type        = string
-  default     = ""
+  // sensitive = true
+  default = ""
+}
+
+variable "proxy_scheme" {
+  description = "The proxy user to use for the Harness delegate."
+  type        = string
+  // sensitive = true
+  default = ""
+}
+
+variable "no_proxy" {
+  description = "Enter a comma-separated list of suffixes that do not need the proxy. For example, .company.com,hostname,etc. Do not use leading wildcards."
+  type        = string
+  // sensitive = true
+  default = ""
 }
 
 variable "values" {
