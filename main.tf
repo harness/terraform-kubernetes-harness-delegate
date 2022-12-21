@@ -16,6 +16,7 @@ locals {
     namespace            = var.namespace,
     delegateName         = var.delegate_name,
     delegateDockerImage  = var.delegate_image,
+    replicas             = var.replicas,
     proxyUser            = var.proxy_user,
     proxyPassword        = var.proxy_password,
     proxyHost            = var.proxy_host,
