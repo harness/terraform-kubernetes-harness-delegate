@@ -17,7 +17,7 @@ locals {
     delegateName         = var.delegate_name,
     delegateDockerImage  = var.delegate_image,
     replicas             = var.replicas,
-    upgrader             = { enabled = var.upgraderEnabled }
+    upgrader             = { enabled = var.upgrader_enabled }
     proxyUser            = var.proxy_user,
     proxyPassword        = var.proxy_password,
     proxyHost            = var.proxy_host,

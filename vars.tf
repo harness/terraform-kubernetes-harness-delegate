@@ -45,7 +45,7 @@ variable "replicas" {
   default     = 1
 }
 
-variable "upgraderEnabled" {
+variable "upgrader_enabled" {
   description = "Is upgrader enabled"
   type        = bool
   default     = true
