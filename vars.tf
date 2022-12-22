@@ -45,6 +45,12 @@ variable "replicas" {
   default     = 1
 }
 
+variable "upgraderEnabled" {
+  description = "Is upgrader enabled"
+  type        = bool
+  default     = true
+}
+
 variable "proxy_user" {
   description = "The proxy user to use for the Harness delegate."
   type        = string
