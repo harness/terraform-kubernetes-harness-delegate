@@ -29,7 +29,7 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | The account ID to use for the Harness delegate. | `string` | n/a | yes |
-| <a name="input_delegate_image"></a> [delegate\_image](#input\_delegate\_image) | The image of delegate. | `string` | `"harness/delegate:22.11.77611"` | no |
+| <a name="input_delegate_image"></a> [delegate\_image](#input\_delegate\_image) | The image of delegate. | `string` | `""` | no |
 | <a name="input_delegate_name"></a> [delegate\_name](#input\_delegate\_name) | The name of the Harness delegate. | `string` | n/a | yes |
 | <a name="input_delegate_token"></a> [delegate\_token](#input\_delegate\_token) | The account secret to use for the Harness delegate. | `string` | n/a | yes |
 | <a name="input_helm_repository"></a> [helm\_repository](#input\_helm\_repository) | The Helm repository to use. | `string` | `"https://app.harness.io/storage/harness-download/harness-helm-charts/"` | no |
@@ -41,7 +41,9 @@ No modules.
 | <a name="input_proxy_port"></a> [proxy\_port](#input\_proxy\_port) | The port of the proxy | `string` | `""` | no |
 | <a name="input_proxy_scheme"></a> [proxy\_scheme](#input\_proxy\_scheme) | The proxy user to use for the Harness delegate. | `string` | `""` | no |
 | <a name="input_proxy_user"></a> [proxy\_user](#input\_proxy\_user) | The proxy user to use for the Harness delegate. | `string` | `""` | no |
-| <a name="input_values"></a> [values](#input\_values) | Additional values to pass to the helm chart. Values will be merged, in order, as Helm does with multiple -f options | `string` | n/a | yes |
+| <a name="input_replicas"></a> [replicas](#input\_replicas) | replica count of delegates. | `number` | `1` | no |
+| <a name="input_upgraderEnabled"></a> [upgraderEnabled](#input\_upgraderEnabled) | Is upgrader enabled | `bool` | `true` | no |
+| <a name="input_values"></a> [values](#input\_values) | Additional values to pass to the helm chart. Values will be merged, in order, as Helm does with multiple -f options | `string` | `""` | no |
 
 ## Outputs
 

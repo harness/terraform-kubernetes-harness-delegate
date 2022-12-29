@@ -39,6 +39,18 @@ variable "manager_endpoint" {
   // default     = "https://app.harness.io/gratis"
 }
 
+variable "replicas" {
+  description = "replica count of delegates."
+  type        = number
+  default     = 1
+}
+
+variable "upgrader_enabled" {
+  description = "Is upgrader enabled"
+  type        = bool
+  default     = true
+}
+
 variable "proxy_user" {
   description = "The proxy user to use for the Harness delegate."
   type        = string
