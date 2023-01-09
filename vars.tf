@@ -1,7 +1,7 @@
 variable "helm_repository" {
   description = "The Helm repository to use."
   type        = string
-  default     = "https://app.harness.io/storage/harness-download/harness-helm-charts/"
+  default     = "https://app.harness.io/storage/harness-download/delegate-helm-chart/"
 }
 
 variable "namespace" {
