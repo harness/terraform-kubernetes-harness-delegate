@@ -7,8 +7,8 @@ module "delegate" {
   delegate_name = "example"
   namespace = "harness-delegate-ng"
   manager_endpoint = "https://app.harness.io/gratis"
-  # delegate_image = "harness/delegate:22.11.77802"
-  replica = 1
+  # delegate_image = "harness/delegate:22.12.77802"
+  replicas = 1
   upgrader_enabled = false
 
   # Additional optional values to pass to the helm chart
