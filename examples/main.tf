@@ -7,7 +7,7 @@ module "delegate" {
   delegate_name = "PUT_YOUR_DELEGATE_NAME"
   namespace = "harness-delegate-ng"
   manager_endpoint = "PUT_YOUR_MANAGER_URL"
-  # delegate_image = "harness/delegate:22.11.77802"
+  # delegate_image = "harness/delegate:22.12.77802"
   replica = 1
   upgrader_enabled = false
 
