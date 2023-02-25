@@ -8,12 +8,12 @@ module "delegate" {
   namespace = "harness-delegate-ng"
   manager_endpoint = "PUT_YOUR_MANAGER_URL"
   delegate_image = "PUT_YOUR_DELEGATE_IMAGE"
-  replica = 1
+  replicas = 1
   upgrader_enabled = false
 
   # Additional optional values to pass to the helm chart
   values = yamlencode({
-    javaOpts: "-Xms64M" 
+    initScript: ""
   })
 }
 
