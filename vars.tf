@@ -36,7 +36,6 @@ variable "delegate_token" {
 variable "manager_endpoint" {
   description = "The endpoint of Harness Manager."
   type        = string
-  // default     = "https://app.harness.io/gratis"
 }
 
 variable "replicas" {
@@ -55,42 +54,44 @@ variable "proxy_user" {
   description = "The proxy user to use for the Harness delegate."
   type        = string
   // sensitive = true
-  default = ""
+  default     = ""
 }
 
 variable "proxy_password" {
   description = "The proxy password to use for the Harness delegate."
   type        = string
   // sensitive = true
-  default = ""
+  default     = ""
 }
 
 variable "proxy_host" {
   description = "The proxy host."
   type        = string
-  // sensitive = true
-  default = ""
+  default     = ""
 }
 
 variable "proxy_port" {
   description = "The port of the proxy"
   type        = string
-  // sensitive = true
-  default = ""
+  default     = ""
 }
 
 variable "proxy_scheme" {
   description = "The proxy user to use for the Harness delegate."
   type        = string
-  // sensitive = true
-  default = ""
+  default     = ""
 }
 
 variable "no_proxy" {
   description = "Enter a comma-separated list of suffixes that do not need the proxy. For example, .company.com,hostname,etc. Do not use leading wildcards."
   type        = string
-  // sensitive = true
-  default = ""
+  default     = ""
+}
+
+variable "init_script" {
+  description = "Init Script"
+  type        = string
+  default     = ""
 }
 
 variable "values" {

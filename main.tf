@@ -23,7 +23,8 @@ locals {
     proxyHost            = var.proxy_host,
     proxyPort            = var.proxy_port,
     proxyScheme          = var.proxy_scheme,
-    noProxy              = var.no_proxy
+    noProxy              = var.no_proxy,
+    initScript           = var.init_script
   })
 }
 
