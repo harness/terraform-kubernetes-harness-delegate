@@ -38,6 +38,18 @@ variable "manager_endpoint" {
   type        = string
 }
 
+variable "deploy_mode" {
+  description = "Delegate deploy_mode, options are 'KUBERNETES', 'KUBERNETES_ONPREM', 'ONPREM'."
+  type        = string
+  default     = "KUBERNETES"
+}
+
+variable "next_gen" {
+  description = "Is next gen or first gen delegate."
+  type        = bool
+  default     = true
+}
+
 variable "replicas" {
   description = "replica count of delegates."
   type        = number

@@ -18,13 +18,15 @@ locals {
     delegateDockerImage  = var.delegate_image,
     replicas             = var.replicas,
     upgrader             = { enabled = var.upgrader_enabled }
+    nextGen              = var.next_gen,
     proxyUser            = var.proxy_user,
     proxyPassword        = var.proxy_password,
     proxyHost            = var.proxy_host,
     proxyPort            = var.proxy_port,
     proxyScheme          = var.proxy_scheme,
     noProxy              = var.no_proxy,
-    initScript           = var.init_script
+    initScript           = var.init_script,
+    deployMode           = var.deploy_mode
   })
 }
 
