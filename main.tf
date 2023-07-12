@@ -3,7 +3,7 @@ resource "helm_release" "delegate" {
   repository       = var.helm_repository
   chart            = "harness-delegate-ng"
   namespace        = var.namespace
-  create_namespace = true
+  create_namespace = var.create_namespace
 
   values = [data.utils_deep_merge_yaml.values.output]
 }
