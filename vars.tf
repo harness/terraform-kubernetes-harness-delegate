@@ -1,3 +1,9 @@
+variable "create_namespace" {
+  description = "Create namespace if it does not exist"
+  type        = bool
+  default     = true
+}
+
 variable "helm_repository" {
   description = "The Helm repository to use."
   type        = string
