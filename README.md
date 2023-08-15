@@ -3,14 +3,14 @@
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_helm"></a> [helm](#requirement\_helm) | 2.5.1 |
+| <a name="requirement_helm"></a> [helm](#requirement\_helm) | 2.9.0 |
 | <a name="requirement_utils"></a> [utils](#requirement\_utils) | >= 0.14.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_helm"></a> [helm](#provider\_helm) | 2.5.1 |
+| <a name="provider_helm"></a> [helm](#provider\_helm) | 2.9.0 |
 | <a name="provider_utils"></a> [utils](#provider\_utils) | >= 0.14.0 |
 
 ## Modules
@@ -21,7 +21,7 @@ No modules.
 
 | Name | Type |
 |------|------|
-| [helm_release.delegate](https://registry.terraform.io/providers/hashicorp/helm/2.5.1/docs/resources/release) | resource |
+| [helm_release.delegate](https://registry.terraform.io/providers/hashicorp/helm/2.9.0/docs/resources/release) | resource |
 | [utils_deep_merge_yaml.values](https://registry.terraform.io/providers/cloudposse/utils/latest/docs/data-sources/deep_merge_yaml) | data source |
 
 ## Inputs
@@ -29,6 +29,7 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | The account ID to use for the Harness delegate. | `string` | n/a | yes |
+| <a name="input_create_namespace"></a> [create\_namespace](#input\_create\_namespace) | Create namespace if it does not exist | `bool` | `true` | no |
 | <a name="input_delegate_image"></a> [delegate\_image](#input\_delegate\_image) | The image of delegate. | `string` | `""` | no |
 | <a name="input_delegate_name"></a> [delegate\_name](#input\_delegate\_name) | The name of the Harness delegate. | `string` | n/a | yes |
 | <a name="input_delegate_token"></a> [delegate\_token](#input\_delegate\_token) | The account secret to use for the Harness delegate. | `string` | n/a | yes |
