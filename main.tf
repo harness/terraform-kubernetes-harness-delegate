@@ -6,12 +6,19 @@ resource "helm_release" "delegate" {
   create_namespace = var.create_namespace
 
   values = [data.utils_deep_merge_yaml.values.output]
+
+  # ref https://github.com/hashicorp/terraform-provider-helm/pull/480
+  set_sensitive {
+    name  = "delegateToken"
+    value = var.delegate_token
+    type = "string"
+  }
+
 }
 
 locals {
   values = yamlencode({
     accountId            = var.account_id,
-    delegateToken        = var.delegate_token,
     managerEndpoint      = var.manager_endpoint,
     namespace            = var.namespace,
     delegateName         = var.delegate_name,
