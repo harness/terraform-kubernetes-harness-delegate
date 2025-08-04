@@ -34,6 +34,7 @@ locals {
     noProxy              = var.no_proxy,
     initScript           = var.init_script,
     deployMode           = var.deploy_mode
+    mTLS                 = { secretName = var.mtls_secret_name } 
   })
 }
 
