@@ -68,6 +68,12 @@ variable "upgrader_enabled" {
   default     = true
 }
 
+variable "mtls_secret_name" {
+  description = "The name of the mTLS secret."
+  type        = string
+  default     = ""
+}
+
 variable "proxy_user" {
   description = "The proxy user to use for the Harness delegate."
   type        = string

@@ -47,6 +47,7 @@ No modules.
 | <a name="input_proxy_user"></a> [proxy\_user](#input\_proxy\_user) | The proxy user to use for the Harness delegate. | `string` | `""` | no |
 | <a name="input_replicas"></a> [replicas](#input\_replicas) | replica count of delegates. | `number` | `1` | no |
 | <a name="input_upgrader_enabled"></a> [upgrader\_enabled](#input\_upgrader\_enabled) | Is upgrader enabled | `bool` | `true` | no |
+| <a name="input_mtls_secret_name"></a> [mtls\_secret\_name](#input\_mtls\_secret\_name) | The name of the mTLS secret. | `string` | `""` | no |
 | <a name="input_values"></a> [values](#input\_values) | Additional values to pass to the helm chart. Values will be merged, in order, as Helm does with multiple -f options | `string` | `""` | no |
 
 ## Outputs
