@@ -1,17 +1,16 @@
 package test
 
 import (
-	"context"
 	"fmt"
-	"path/filepath"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/gruntwork-io/terratest/modules/helm"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/terraform"
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,10 +19,18 @@ import (
 func TestBasicDelegateDeployment(t *testing.T) {
 	t.Parallel()
 
-	// Generate unique resource names for parallel testing
+	// Load environment variables from .env file
+	_ = godotenv.Load(".env")
+
+	// Get unique resource names for parallel testing
 	uniqueID := random.UniqueId()
-	namespaceName := fmt.Sprintf("test-harness-delegate-%s", strings.ToLower(uniqueID))
 	delegateName := fmt.Sprintf("test-delegate-%s", strings.ToLower(uniqueID))
+	namespaceName := os.Getenv("NAMESPACE")
+	account_id := os.Getenv("ACCOUNT_ID")
+	delegate_token := os.Getenv("DELEGATE_TOKEN")
+	delegate_image := os.Getenv("DELEGATE_IMAGE")
+	manager_endpoint := os.Getenv("MANAGER_ENDPOINT")
+	replicas := 1
 
 	// Setup the terraform options
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -31,17 +38,20 @@ func TestBasicDelegateDeployment(t *testing.T) {
 		Vars: map[string]interface{}{
 			"namespace":        namespaceName,
 			"delegate_name":    delegateName,
-			"account_id":       "test_account_id",
-			"delegate_token":   "test_token",
-			"manager_endpoint": "https://app.harness.io",
-			"replicas":         1,
+			"account_id":       account_id,
+			"delegate_token":   delegate_token,
+			"delegate_image":   delegate_image,
+			"manager_endpoint": manager_endpoint,
+			"replicas":         replicas,
 			"upgrader_enabled": false,
 			"create_namespace": true,
 		},
 	})
 
-	// Clean up resources with "defer" so that they run even if the test fails
-	defer terraform.Destroy(t, terraformOptions)
+	// Clean up resources if the test fails
+	t.Cleanup(func() {
+		terraform.Destroy(t, terraformOptions)
+	})
 
 	// Run terraform init and apply
 	terraform.InitAndApply(t, terraformOptions)
@@ -49,58 +59,39 @@ func TestBasicDelegateDeployment(t *testing.T) {
 	// Get the Kubernetes config path
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespaceName)
 
-	// Wait for the namespace to be created
-	k8s.WaitUntilNamespaceAvailable(t, kubectlOptions, namespaceName, 10, 3*time.Second)
-
 	// Verify the namespace exists
 	namespace := k8s.GetNamespace(t, kubectlOptions, namespaceName)
 	assert.Equal(t, namespaceName, namespace.Name)
 
 	// Verify the Helm release exists
-	helmOptions := &helm.Options{
-		KubectlOptions: kubectlOptions,
-	}
-
-	// Check if the Helm release exists and is deployed
-	releases := helm.GetReleases(t, helmOptions, true, "")
-	var foundRelease bool
-	for _, release := range releases {
-		if release.Name == delegateName && release.Namespace == namespaceName {
-			foundRelease = true
-			assert.Equal(t, "deployed", release.Status)
-			break
-		}
-	}
-	require.True(t, foundRelease, "Helm release should exist and be deployed")
+	ValidateHelmRelease(t, kubectlOptions, namespaceName, delegateName)
 
 	// Wait for the deployment to be ready
 	k8s.WaitUntilDeploymentAvailable(t, kubectlOptions, delegateName, 10, 30*time.Second)
 
 	// Verify the deployment exists and has the correct replicas
-	deployment := k8s.GetDeployment(t, kubectlOptions, delegateName)
-	assert.Equal(t, delegateName, deployment.Name)
-	assert.Equal(t, int32(1), *deployment.Spec.Replicas)
-	assert.Equal(t, int32(1), deployment.Status.ReadyReplicas)
+	deploymentName := delegateName
+	deployment := k8s.GetDeployment(t, kubectlOptions, deploymentName)
+	assert.Equal(t, deploymentName, deployment.Name)
+	assert.Equal(t, (int32)(replicas), *deployment.Spec.Replicas)
+	assert.Equal(t, (int32)(replicas), deployment.Status.ReadyReplicas)
 
-	// Verify ConfigMap exists with correct configuration
-	configMapName := fmt.Sprintf("%s-config", delegateName)
-	configMap := k8s.GetConfigMap(t, kubectlOptions, configMapName)
-	assert.Equal(t, configMapName, configMap.Name)
+	// Getting pod list
+	labelSelector := metav1.FormatLabelSelector(deployment.Spec.Selector)
+	pods := k8s.ListPods(t, kubectlOptions, metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	assert.Equal(t, replicas, len(pods), "expected number of pods")
 
-	// Verify environment variables in the deployment
-	containers := deployment.Spec.Template.Spec.Containers
-	require.Greater(t, len(containers), 0, "Deployment should have at least one container")
+	// Verify container with correct configuration
+	containers := pods[0].Spec.Containers
+	require.Greater(t, len(containers), 0, "Pod should have at least one container")
 
-	// Check for essential environment variables
-	envVars := containers[0].Env
-	envMap := make(map[string]string)
-	for _, env := range envVars {
-		envMap[env.Name] = env.Value
-	}
+	container := containers[0]
+	envMap := ResolveContainerEnvMap(t, kubectlOptions, container)
 
-	assert.Equal(t, "test_account_id", envMap["ACCOUNT_ID"])
-	assert.Equal(t, "https://app.harness.io", envMap["MANAGER_HOST_AND_PORT"])
-	assert.Equal(t, delegateName, envMap["DELEGATE_NAME"])
+	// Validate basic delegate configuration
+	ValidateBasicDelegateConfiguration(t, envMap, account_id, manager_endpoint, delegateName, &container, delegate_image)
 
 	// Verify the service account exists
 	serviceAccountName := delegateName
@@ -110,4 +101,11 @@ func TestBasicDelegateDeployment(t *testing.T) {
 	// Verify terraform output
 	output := terraform.Output(t, terraformOptions, "values")
 	assert.NotEmpty(t, output, "Terraform output should not be empty")
+
+	// Verify terraform output contains delegate configuration
+	assert.Contains(t, output, "delegate_name", "Output should contain delegate_name")
+	assert.Contains(t, output, "account_id", "Output should contain account_id")
+	assert.Contains(t, output, "delegate_token", "Output should contain delegate_token")
+	assert.Contains(t, output, "delegate_image", "Output should contain delegate_image")
+	assert.Contains(t, output, "manager_endpoint", "Output should contain manager_endpoint")
 }

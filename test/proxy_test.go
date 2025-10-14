@@ -1,7 +1,9 @@
 package test
 
 import (
+	// "encoding/base64"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -9,17 +11,33 @@ import (
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/terraform"
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestDelegateWithProxyConfiguration(t *testing.T) {
 	t.Parallel()
 
-	// Generate unique resource names for parallel testing
+	// Load environment variables from .env file
+	_ = godotenv.Load(".env")
+
+	// Get unique resource names for parallel testing
 	uniqueID := random.UniqueId()
-	namespaceName := fmt.Sprintf("test-proxy-delegate-%s", strings.ToLower(uniqueID))
-	delegateName := fmt.Sprintf("test-proxy-delegate-%s", strings.ToLower(uniqueID))
+	delegateName := fmt.Sprintf("test-delegate-%s", strings.ToLower(uniqueID))
+	namespaceName := "harness-delegate-ng"
+	account_id := os.Getenv("ACCOUNT_ID")
+	delegate_token := os.Getenv("DELEGATE_TOKEN")
+	delegate_image := os.Getenv("DELEGATE_IMAGE")
+	manager_endpoint := os.Getenv("MANAGER_ENDPOINT")
+	replicas := 1
+	proxy_host := os.Getenv("PROXY_HOST")
+	proxy_port := os.Getenv("PROXY_PORT")
+	proxy_scheme := os.Getenv("PROXY_SCHEME")
+	proxy_user := os.Getenv("PROXY_USER")
+	proxy_password := os.Getenv("PROXY_PASSWORD")
+	no_proxy := os.Getenv("NO_PROXY")
 
 	// Setup the terraform options with proxy configuration
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -27,24 +45,27 @@ func TestDelegateWithProxyConfiguration(t *testing.T) {
 		Vars: map[string]interface{}{
 			"namespace":        namespaceName,
 			"delegate_name":    delegateName,
-			"account_id":       "test_account_id",
-			"delegate_token":   "test_token",
-			"manager_endpoint": "https://app.harness.io",
-			"replicas":         1,
+			"account_id":       account_id,
+			"delegate_token":   delegate_token,
+			"delegate_image":   delegate_image,
+			"manager_endpoint": manager_endpoint,
+			"replicas":         replicas,
 			"upgrader_enabled": false,
 			"create_namespace": true,
 			// Proxy configuration
-			"proxy_host":     "proxy.company.com",
-			"proxy_port":     "8080",
-			"proxy_scheme":   "http",
-			"proxy_user":     "proxy_user",
-			"proxy_password": "proxy_password",
-			"no_proxy":       ".company.com,localhost",
+			"proxy_host":     proxy_host,
+			"proxy_port":     proxy_port,
+			"proxy_scheme":   proxy_scheme,
+			"proxy_user":     proxy_user,
+			"proxy_password": proxy_password,
+			"no_proxy":       no_proxy,
 		},
 	})
 
-	// Clean up resources with "defer" so that they run even if the test fails
-	defer terraform.Destroy(t, terraformOptions)
+	// Clean up resources if the test fails
+	t.Cleanup(func() {
+		terraform.Destroy(t, terraformOptions)
+	})
 
 	// Run terraform init and apply
 	terraform.InitAndApply(t, terraformOptions)
@@ -52,54 +73,86 @@ func TestDelegateWithProxyConfiguration(t *testing.T) {
 	// Get the Kubernetes config path
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespaceName)
 
-	// Wait for the namespace to be created
-	k8s.WaitUntilNamespaceAvailable(t, kubectlOptions, namespaceName, 10, 3*time.Second)
+	// Verify the namespace exists
+	namespace := k8s.GetNamespace(t, kubectlOptions, namespaceName)
+	assert.Equal(t, namespaceName, namespace.Name)
 
 	// Wait for the deployment to be ready
 	k8s.WaitUntilDeploymentAvailable(t, kubectlOptions, delegateName, 10, 30*time.Second)
 
-	// Verify the deployment exists and has proxy configuration
-	deployment := k8s.GetDeployment(t, kubectlOptions, delegateName)
-	assert.Equal(t, delegateName, deployment.Name)
+	// Verify the deployment exists and has the correct replicas
+	deploymentName := delegateName
+	deployment := k8s.GetDeployment(t, kubectlOptions, deploymentName)
+	assert.Equal(t, deploymentName, deployment.Name)
+	assert.Equal(t, (int32)(replicas), *deployment.Spec.Replicas)
+	assert.Equal(t, (int32)(replicas), deployment.Status.ReadyReplicas)
 
-	// Verify proxy environment variables in the deployment
-	containers := deployment.Spec.Template.Spec.Containers
-	require.Greater(t, len(containers), 0, "Deployment should have at least one container")
+	// Getting pod list
+	labelSelector := metav1.FormatLabelSelector(deployment.Spec.Selector)
+	pods := k8s.ListPods(t, kubectlOptions, metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	assert.Equal(t, replicas, len(pods), "expected number of pods")
 
-	// Check for proxy environment variables
-	envVars := containers[0].Env
-	envMap := make(map[string]string)
-	for _, env := range envVars {
-		if env.Value != "" {
-			envMap[env.Name] = env.Value
-		}
-	}
+	// Verify container with correct configuration
+	containers := pods[0].Spec.Containers
+	require.Greater(t, len(containers), 0, "Pod should have at least one container")
 
-	// Verify proxy configuration environment variables
-	assert.Equal(t, "proxy.company.com", envMap["PROXY_HOST"])
-	assert.Equal(t, "8080", envMap["PROXY_PORT"])
-	assert.Equal(t, "http", envMap["PROXY_SCHEME"])
-	assert.Equal(t, "proxy_user", envMap["PROXY_USER"])
-	assert.Equal(t, "proxy_password", envMap["PROXY_PASSWORD"])
-	assert.Equal(t, ".company.com,localhost", envMap["NO_PROXY"])
+	container := containers[0]
+	envMap := ResolveContainerEnvMap(t, kubectlOptions, container)
 
-	// Verify the deployment is running successfully with proxy config
-	assert.Equal(t, int32(1), deployment.Status.ReadyReplicas)
+	// Validate basic delegate configuration
+	ValidateBasicDelegateConfiguration(t, envMap, account_id, manager_endpoint, delegateName, &container, delegate_image)
 
-	// Verify terraform output contains proxy configuration
+	// Create ProxyConfig struct
+	var proxyConfig ProxyConfig
+	proxyConfig.Host = proxy_host
+	proxyConfig.Port = proxy_port
+	proxyConfig.Scheme = proxy_scheme
+	proxyConfig.User = proxy_user
+	proxyConfig.Password = proxy_password
+	proxyConfig.NoProxy = no_proxy
+
+	// Validate proxy configuration
+	ValidateProxyConfiguration(t, envMap, proxyConfig)
+
+	// Verify ConfigMap exists
+	configMapName := fmt.Sprintf("%s-proxy", delegateName)
+	configMap := k8s.GetConfigMap(t, kubectlOptions, configMapName)
+	assert.Equal(t, configMapName, configMap.Name)
+
+	// Verify Secret exists
+	secretName := fmt.Sprintf("%s-proxy", delegateName)
+	secret := k8s.GetSecret(t, kubectlOptions, secretName)
+	assert.Equal(t, secretName, secret.Name)
+
 	output := terraform.Output(t, terraformOptions, "values")
 	assert.NotEmpty(t, output, "Terraform output should not be empty")
-	assert.Contains(t, output, "proxy.company.com", "Output should contain proxy host")
-	assert.Contains(t, output, "8080", "Output should contain proxy port")
+
+	// Verify terraform output contains proxy configuration
+	assert.Contains(t, output, "proxy_host", "Output should contain proxy host")
+	assert.Contains(t, output, "proxy_port", "Output should contain proxy port")
+	assert.Contains(t, output, "proxy_scheme", "Output should contain proxy scheme")
+	assert.Contains(t, output, "proxy_user", "Output should contain proxy user")
+	assert.Contains(t, output, "proxy_password", "Output should contain proxy password")
+	assert.Contains(t, output, "no_proxy", "Output should contain no proxy")
 }
 
 func TestDelegateWithoutProxyConfiguration(t *testing.T) {
 	t.Parallel()
 
-	// Generate unique resource names for parallel testing
+	// Load environment variables from .env file
+	_ = godotenv.Load(".env")
+
+	// Get unique resource names for parallel testing
 	uniqueID := random.UniqueId()
-	namespaceName := fmt.Sprintf("test-no-proxy-delegate-%s", strings.ToLower(uniqueID))
-	delegateName := fmt.Sprintf("test-no-proxy-delegate-%s", strings.ToLower(uniqueID))
+	delegateName := fmt.Sprintf("test-delegate-%s", strings.ToLower(uniqueID))
+	namespaceName := "harness-delegate-ng"
+	account_id := os.Getenv("ACCOUNT_ID")
+	delegate_token := os.Getenv("DELEGATE_TOKEN")
+	delegate_image := os.Getenv("DELEGATE_IMAGE")
+	manager_endpoint := os.Getenv("MANAGER_ENDPOINT")
+	replicas := 1
 
 	// Setup the terraform options without proxy configuration
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -107,10 +160,11 @@ func TestDelegateWithoutProxyConfiguration(t *testing.T) {
 		Vars: map[string]interface{}{
 			"namespace":        namespaceName,
 			"delegate_name":    delegateName,
-			"account_id":       "test_account_id",
-			"delegate_token":   "test_token",
-			"manager_endpoint": "https://app.harness.io",
-			"replicas":         1,
+			"account_id":       account_id,
+			"delegate_token":   delegate_token,
+			"delegate_image":   delegate_image,
+			"manager_endpoint": manager_endpoint,
+			"replicas":         replicas,
 			"upgrader_enabled": false,
 			"create_namespace": true,
 			// Explicitly empty proxy configuration
@@ -123,8 +177,10 @@ func TestDelegateWithoutProxyConfiguration(t *testing.T) {
 		},
 	})
 
-	// Clean up resources with "defer" so that they run even if the test fails
-	defer terraform.Destroy(t, terraformOptions)
+	// Clean up resources if the test fails
+	t.Cleanup(func() {
+		terraform.Destroy(t, terraformOptions)
+	})
 
 	// Run terraform init and apply
 	terraform.InitAndApply(t, terraformOptions)
@@ -132,35 +188,58 @@ func TestDelegateWithoutProxyConfiguration(t *testing.T) {
 	// Get the Kubernetes config path
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespaceName)
 
-	// Wait for the namespace to be created
-	k8s.WaitUntilNamespaceAvailable(t, kubectlOptions, namespaceName, 10, 3*time.Second)
+	// Verify the namespace exists
+	namespace := k8s.GetNamespace(t, kubectlOptions, namespaceName)
+	assert.Equal(t, namespaceName, namespace.Name)
 
 	// Wait for the deployment to be ready
 	k8s.WaitUntilDeploymentAvailable(t, kubectlOptions, delegateName, 10, 30*time.Second)
 
-	// Verify the deployment exists
-	deployment := k8s.GetDeployment(t, kubectlOptions, delegateName)
-	assert.Equal(t, delegateName, deployment.Name)
+	// Verify the deployment exists and has proxy configuration
+	deploymentName := delegateName
+	deployment := k8s.GetDeployment(t, kubectlOptions, deploymentName)
+	assert.Equal(t, deploymentName, deployment.Name)
+	assert.Equal(t, int32(replicas), *deployment.Spec.Replicas)
+	assert.Equal(t, int32(replicas), deployment.Status.ReadyReplicas)
 
-	// Verify NO proxy environment variables in the deployment
-	containers := deployment.Spec.Template.Spec.Containers
-	require.Greater(t, len(containers), 0, "Deployment should have at least one container")
+	// Getting pod list
+	labelSelector := metav1.FormatLabelSelector(deployment.Spec.Selector)
+	pods := k8s.ListPods(t, kubectlOptions, metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	assert.Equal(t, replicas, len(pods), "expected number of pods")
 
-	// Check that proxy environment variables are not set or are empty
-	envVars := containers[0].Env
-	envMap := make(map[string]string)
-	for _, env := range envVars {
-		envMap[env.Name] = env.Value
-	}
+	// Verify container with correct configuration
+	containers := pods[0].Spec.Containers
+	require.Greater(t, len(containers), 0, "Pod should have at least one container")
 
-	// Verify proxy configuration environment variables are not present or empty
-	proxyEnvVars := []string{"PROXY_HOST", "PROXY_PORT", "PROXY_SCHEME", "PROXY_USER", "PROXY_PASSWORD", "NO_PROXY"}
-	for _, envVar := range proxyEnvVars {
-		if val, exists := envMap[envVar]; exists {
-			assert.Empty(t, val, fmt.Sprintf("Environment variable %s should be empty when proxy is not configured", envVar))
-		}
-	}
+	container := containers[0]
+	envMap := ResolveContainerEnvMap(t, kubectlOptions, container)
 
-	// Verify the deployment is running successfully without proxy config
-	assert.Equal(t, int32(1), deployment.Status.ReadyReplicas)
+	// Validate basic delegate configuration
+	ValidateBasicDelegateConfiguration(t, envMap, account_id, manager_endpoint, delegateName, &container, delegate_image)
+
+	// Validate no proxy configuration
+	ValidateNoProxyConfiguration(t, envMap)
+
+	// Verify that proxy ConfigMap does not exist
+	proxyConfigMapName := fmt.Sprintf("%s-proxy", delegateName)
+	_, err := k8s.GetConfigMapE(t, kubectlOptions, proxyConfigMapName)
+	assert.Error(t, err, "Proxy ConfigMap should not exist when proxy is not configured")
+
+	// Verify that proxy Secret does not exist
+	proxySecretName := fmt.Sprintf("%s-proxy", delegateName)
+	_, err = k8s.GetSecretE(t, kubectlOptions, proxySecretName)
+	assert.Error(t, err, "Proxy Secret should not exist when proxy is not configured")
+
+	output := terraform.Output(t, terraformOptions, "values")
+	assert.NotEmpty(t, output, "Terraform output should not be empty")
+
+	// should not contain proxy configuration
+	assert.NotContains(t, output, "proxy_host", "Output should not contain proxy host")
+	assert.NotContains(t, output, "proxy_port", "Output should not contain proxy port")
+	assert.NotContains(t, output, "proxy_scheme", "Output should not contain proxy scheme")
+	assert.NotContains(t, output, "proxy_user", "Output should not contain proxy user")
+	assert.NotContains(t, output, "proxy_password", "Output should not contain proxy password")
+	assert.NotContains(t, output, "no_proxy", "Output should not contain no proxy")
 }
