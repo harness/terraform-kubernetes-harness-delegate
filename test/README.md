@@ -10,7 +10,7 @@ The tests validate various deployment scenarios and configurations of the Harnes
 
 - **`basic_test.go`** - Tests basic delegate deployment functionality
 - **`proxy_test.go`** - Tests proxy configuration scenarios (with and without proxy)
-- **`mtls_test.go`** - Tests mTLS configuration scenarios (with and without mTLS)
+- **`upgrader_test.go`** - Tests upgrader configuration scenarios (with upgrader and with upgrader-proxy)
 - **`helpers.go`** - Shared utility functions and helpers for all tests
 
 ## Prerequisites
@@ -44,16 +44,20 @@ The tests validate various deployment scenarios and configurations of the Harnes
    go mod tidy
    ```
 
+4. **Environment Variables Setup**
+- Create a `.env` file in the `test` directory with the environment variables in `.env.example`
+- Export kubectl config path
+   ```bash
+   export KUBE_CONFIG_PATH="~/.kube/config"
+   ```
+
 ## Running Tests
 
 ### Run All Tests
 
 ```bash
-# Run all tests with verbose output
-go test -v ./test/...
-
-# Run tests in parallel (faster execution)
-go test -v -parallel 4 ./test/...
+# Run all tests with verbose output (recommended)
+go test -v ./test/... --timeout 45m
 ```
 
 ### Run Specific Tests
@@ -64,16 +68,11 @@ go test -v ./test/ -run TestBasicDelegateDeployment
 
 # Run only proxy tests
 go test -v ./test/ -run TestDelegateWithProxyConfiguration
+go test -v ./test/ -run TestDelegateWithoutProxyConfiguration
 
-# Run only mTLS tests
-go test -v ./test/ -run TestDelegateWithMTLSConfiguration
-```
-
-### Run Tests with Timeout
-
-```bash
-# Set longer timeout for slower clusters
-go test -v -timeout 30m ./test/...
+# Run only upgrader tests
+go test -v ./test/ -run TestDelegateWithUpgrader
+go test -v ./test/ -run TestDelegateWithUpgraderProxy
 ```
 
 ## Test Scenarios
@@ -85,8 +84,10 @@ go test -v -timeout 30m ./test/...
 - Verifies namespace creation
 - Checks Helm release status
 - Validates deployment readiness
-- Confirms environment variables
+- Confirms container environment variables
 - Verifies service account creation
+- Verifies ConfigMap creation
+- Verifies Secret creation
 - Tests Terraform output
 
 **What it tests:**
@@ -115,84 +116,29 @@ go test -v -timeout 30m ./test/...
 - ✅ No proxy exclusions
 - ✅ Clean deployment without proxy settings
 
-### 3. mTLS Configuration Tests (`mtls_test.go`)
+### 3. upgrader Configuration Tests (`upgrader_test.go`)
 
-**TestDelegateWithMTLSConfiguration**
-- Creates test mTLS secret
-- Tests delegate deployment with mTLS configuration
+**TestDelegateWithUpgrader**
+- Creates test upgrader ConfigMap
+- Creates test upgrader Secret
+- Creates test upgrader ServiceAccount
+- Tests delegate deployment with upgrader configuration
 - Validates volume mounts and secret references
 - Ensures secure communication setup
 
-**TestDelegateWithoutMTLSConfiguration**
-- Tests delegate deployment without mTLS configuration
-- Validates absence of mTLS volumes and mounts
-- Ensures clean deployment without mTLS settings
+**TestDelegateWithUpgraderProxy**
+- Tests delegate deployment with upgrader and proxy configuration
+- Validates proxy environment variables
+- Ensures deployment works with proxy settings
 
 **What it tests:**
-- ✅ mTLS secret creation and reference
-- ✅ Volume mounting for certificates
-- ✅ Read-only volume configuration
-- ✅ Clean deployment without mTLS settings
+- ✅ upgrader secret creation and reference
+- ✅ Clean deployment without upgrader settings
+- ✅ upgrader proxy configuration
 
-## Test Configuration
+### Troubleshooting
 
-### Default Test Variables
-
-The tests use these default values (defined in `helpers.go`):
-
-```go
-{
-    "namespace":        "test-harness-delegate-{uniqueID}",
-    "delegate_name":    "test-delegate-{uniqueID}",
-    "account_id":       "test_account_id",
-    "delegate_token":   "test_token",
-    "manager_endpoint": "https://app.harness.io",
-    "replicas":         1,
-    "upgrader_enabled": false,
-    "create_namespace": true,
-}
-```
-
-### Customizing Test Variables
-
-You can modify test variables by editing the respective test files or using environment variables:
-
-```bash
-# Example: Run tests with custom timeout
-export TERRATEST_TIMEOUT=45m
-go test -v ./test/...
-```
-
-## Test Utilities
-
-### Helper Functions (`helpers.go`)
-
-The helper file provides reusable functions:
-
-- **`DefaultTerraformVars()`** - Standard terraform variables
-- **`CreateTerraformOptions()`** - Terraform options with retry settings
-- **`CreateMTLSTestSecret()`** - Creates test mTLS secrets
-- **`WaitForDelegateDeployment()`** - Waits for deployment readiness
-- **`GetEnvironmentVariables()`** - Extracts env vars from deployment
-- **`ValidateBasicDelegateConfiguration()`** - Validates basic config
-- **`ValidateProxyConfiguration()`** - Validates proxy settings
-- **`ValidateMTLSVolumeConfiguration()`** - Validates mTLS volumes
-- **`CleanupResources()`** - Resource cleanup utilities
-
-## Parallel Test Execution
-
-Tests are designed to run in parallel using unique resource names:
-
-```go
-uniqueID := random.UniqueId()
-namespaceName := fmt.Sprintf("test-delegate-%s", strings.ToLower(uniqueID))
-```
-
-This prevents conflicts when running multiple tests simultaneously.
-
-## Troubleshooting
-
-### Common Issues
+#### Common Issues
 
 1. **Kubernetes Cluster Access**
    ```bash
@@ -225,18 +171,6 @@ This prevents conflicts when running multiple tests simultaneously.
    go clean -modcache
    go mod tidy
    ```
-
-### Test Timeout Issues
-
-If tests timeout, try:
-
-```bash
-# Increase timeout
-go test -v -timeout 45m ./test/...
-
-# Run single test to isolate issues
-go test -v -run TestBasicDelegateDeployment ./test/
-```
 
 ### Debug Mode
 

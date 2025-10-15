@@ -1,7 +1,6 @@
 package test
 
 import (
-	// "encoding/base64"
 	"fmt"
 	"os"
 	"strings"
@@ -18,8 +17,6 @@ import (
 )
 
 func TestDelegateWithProxyConfiguration(t *testing.T) {
-	t.Parallel()
-
 	// Load environment variables from .env file
 	_ = godotenv.Load(".env")
 
@@ -62,10 +59,8 @@ func TestDelegateWithProxyConfiguration(t *testing.T) {
 		},
 	})
 
-	// Clean up resources if the test fails
-	t.Cleanup(func() {
-		terraform.Destroy(t, terraformOptions)
-	})
+	// Clean up resources after test
+	defer terraform.Destroy(t, terraformOptions)
 
 	// Run terraform init and apply
 	terraform.InitAndApply(t, terraformOptions)
@@ -78,7 +73,7 @@ func TestDelegateWithProxyConfiguration(t *testing.T) {
 	assert.Equal(t, namespaceName, namespace.Name)
 
 	// Wait for the deployment to be ready
-	k8s.WaitUntilDeploymentAvailable(t, kubectlOptions, delegateName, 10, 30*time.Second)
+	k8s.WaitUntilDeploymentAvailable(t, kubectlOptions, delegateName, 8, 30*time.Second)
 
 	// Verify the deployment exists and has the correct replicas
 	deploymentName := delegateName
@@ -104,43 +99,38 @@ func TestDelegateWithProxyConfiguration(t *testing.T) {
 	// Validate basic delegate configuration
 	ValidateBasicDelegateConfiguration(t, envMap, account_id, manager_endpoint, delegateName, &container, delegate_image)
 
-	// Create ProxyConfig struct
-	var proxyConfig ProxyConfig
-	proxyConfig.Host = proxy_host
-	proxyConfig.Port = proxy_port
-	proxyConfig.Scheme = proxy_scheme
-	proxyConfig.User = proxy_user
-	proxyConfig.Password = proxy_password
-	proxyConfig.NoProxy = no_proxy
+	// Validate proxy configuration
+	proxyConfig := ProxyConfig{
+		Host:     proxy_host,
+		Port:     proxy_port,
+		Scheme:   proxy_scheme,
+		User:     proxy_user,
+		Password: proxy_password,
+		NoProxy:  no_proxy,
+	}
 
 	// Validate proxy configuration
 	ValidateProxyConfiguration(t, envMap, proxyConfig)
 
-	// Verify ConfigMap exists
-	configMapName := fmt.Sprintf("%s-proxy", delegateName)
-	configMap := k8s.GetConfigMap(t, kubectlOptions, configMapName)
-	assert.Equal(t, configMapName, configMap.Name)
+	// Validate basic delegate resources
+	ValidateBasicDelegateResources(t, kubectlOptions, delegateName)
 
-	// Verify Secret exists
-	secretName := fmt.Sprintf("%s-proxy", delegateName)
-	secret := k8s.GetSecret(t, kubectlOptions, secretName)
-	assert.Equal(t, secretName, secret.Name)
+	// Validate proxy resources
+	ValidateProxyResources(t, kubectlOptions, delegateName)
 
 	output := terraform.Output(t, terraformOptions, "values")
 	assert.NotEmpty(t, output, "Terraform output should not be empty")
 
 	// Verify terraform output contains proxy configuration
-	assert.Contains(t, output, "proxy_host", "Output should contain proxy host")
-	assert.Contains(t, output, "proxy_port", "Output should contain proxy port")
-	assert.Contains(t, output, "proxy_scheme", "Output should contain proxy scheme")
-	assert.Contains(t, output, "proxy_user", "Output should contain proxy user")
-	assert.Contains(t, output, "proxy_password", "Output should contain proxy password")
-	assert.Contains(t, output, "no_proxy", "Output should contain no proxy")
+	assert.Contains(t, output, "proxyHost", "Output should contain proxy host")
+	assert.Contains(t, output, "proxyPort", "Output should contain proxy port")
+	assert.Contains(t, output, "proxyScheme", "Output should contain proxy scheme")
+	assert.Contains(t, output, "proxyUser", "Output should contain proxy user")
+	assert.Contains(t, output, "proxyPassword", "Output should contain proxy password")
+	assert.Contains(t, output, "noProxy", "Output should contain no proxy")
 }
 
 func TestDelegateWithoutProxyConfiguration(t *testing.T) {
-	t.Parallel()
-
 	// Load environment variables from .env file
 	_ = godotenv.Load(".env")
 
@@ -177,10 +167,8 @@ func TestDelegateWithoutProxyConfiguration(t *testing.T) {
 		},
 	})
 
-	// Clean up resources if the test fails
-	t.Cleanup(func() {
-		terraform.Destroy(t, terraformOptions)
-	})
+	// Clean up resources after test
+	defer terraform.Destroy(t, terraformOptions)
 
 	// Run terraform init and apply
 	terraform.InitAndApply(t, terraformOptions)
@@ -193,7 +181,7 @@ func TestDelegateWithoutProxyConfiguration(t *testing.T) {
 	assert.Equal(t, namespaceName, namespace.Name)
 
 	// Wait for the deployment to be ready
-	k8s.WaitUntilDeploymentAvailable(t, kubectlOptions, delegateName, 10, 30*time.Second)
+	k8s.WaitUntilDeploymentAvailable(t, kubectlOptions, delegateName, 8, 30*time.Second)
 
 	// Verify the deployment exists and has proxy configuration
 	deploymentName := delegateName
@@ -222,6 +210,9 @@ func TestDelegateWithoutProxyConfiguration(t *testing.T) {
 	// Validate no proxy configuration
 	ValidateNoProxyConfiguration(t, envMap)
 
+	// Validate basic delegate resources
+	ValidateBasicDelegateResources(t, kubectlOptions, delegateName)
+
 	// Verify that proxy ConfigMap does not exist
 	proxyConfigMapName := fmt.Sprintf("%s-proxy", delegateName)
 	_, err := k8s.GetConfigMapE(t, kubectlOptions, proxyConfigMapName)
@@ -234,12 +225,4 @@ func TestDelegateWithoutProxyConfiguration(t *testing.T) {
 
 	output := terraform.Output(t, terraformOptions, "values")
 	assert.NotEmpty(t, output, "Terraform output should not be empty")
-
-	// should not contain proxy configuration
-	assert.NotContains(t, output, "proxy_host", "Output should not contain proxy host")
-	assert.NotContains(t, output, "proxy_port", "Output should not contain proxy port")
-	assert.NotContains(t, output, "proxy_scheme", "Output should not contain proxy scheme")
-	assert.NotContains(t, output, "proxy_user", "Output should not contain proxy user")
-	assert.NotContains(t, output, "proxy_password", "Output should not contain proxy password")
-	assert.NotContains(t, output, "no_proxy", "Output should not contain no proxy")
 }

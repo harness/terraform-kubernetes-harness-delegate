@@ -17,8 +17,6 @@ import (
 )
 
 func TestBasicDelegateDeployment(t *testing.T) {
-	t.Parallel()
-
 	// Load environment variables from .env file
 	_ = godotenv.Load(".env")
 
@@ -48,10 +46,8 @@ func TestBasicDelegateDeployment(t *testing.T) {
 		},
 	})
 
-	// Clean up resources if the test fails
-	t.Cleanup(func() {
-		terraform.Destroy(t, terraformOptions)
-	})
+	// Clean up resources after test
+	defer terraform.Destroy(t, terraformOptions)
 
 	// Run terraform init and apply
 	terraform.InitAndApply(t, terraformOptions)
@@ -67,7 +63,7 @@ func TestBasicDelegateDeployment(t *testing.T) {
 	ValidateHelmRelease(t, kubectlOptions, namespaceName, delegateName)
 
 	// Wait for the deployment to be ready
-	k8s.WaitUntilDeploymentAvailable(t, kubectlOptions, delegateName, 10, 30*time.Second)
+	k8s.WaitUntilDeploymentAvailable(t, kubectlOptions, delegateName, 8, 30*time.Second)
 
 	// Verify the deployment exists and has the correct replicas
 	deploymentName := delegateName
@@ -93,19 +89,16 @@ func TestBasicDelegateDeployment(t *testing.T) {
 	// Validate basic delegate configuration
 	ValidateBasicDelegateConfiguration(t, envMap, account_id, manager_endpoint, delegateName, &container, delegate_image)
 
-	// Verify the service account exists
-	serviceAccountName := delegateName
-	serviceAccount := k8s.GetServiceAccount(t, kubectlOptions, serviceAccountName)
-	assert.Equal(t, serviceAccountName, serviceAccount.Name)
+	// Validate basic delegate resources
+	ValidateBasicDelegateResources(t, kubectlOptions, delegateName)
 
 	// Verify terraform output
 	output := terraform.Output(t, terraformOptions, "values")
 	assert.NotEmpty(t, output, "Terraform output should not be empty")
 
 	// Verify terraform output contains delegate configuration
-	assert.Contains(t, output, "delegate_name", "Output should contain delegate_name")
-	assert.Contains(t, output, "account_id", "Output should contain account_id")
-	assert.Contains(t, output, "delegate_token", "Output should contain delegate_token")
-	assert.Contains(t, output, "delegate_image", "Output should contain delegate_image")
-	assert.Contains(t, output, "manager_endpoint", "Output should contain manager_endpoint")
+	assert.Contains(t, output, "delegateName", "Output should contain delegate_name")
+	assert.Contains(t, output, "accountId", "Output should contain account_id")
+	assert.Contains(t, output, "delegateDockerImage", "Output should contain delegate_image")
+	assert.Contains(t, output, "managerEndpoint", "Output should contain manager_endpoint")
 }

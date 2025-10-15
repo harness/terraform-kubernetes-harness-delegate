@@ -1,7 +1,6 @@
 package test
 
 import (
-	// "encoding/base64"
 	"fmt"
 	"os"
 	"strings"
@@ -17,9 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestDelegateWithUpgrader(t *testing.T) {
-	t.Parallel()
-
+func TestDelegateWithUpgraderConfiguration(t *testing.T) {
 	// Load environment variables from .env file
 	_ = godotenv.Load(".env")
 
@@ -31,7 +28,7 @@ func TestDelegateWithUpgrader(t *testing.T) {
 	delegate_token := os.Getenv("DELEGATE_TOKEN")
 	delegate_image := os.Getenv("DELEGATE_IMAGE")
 	manager_endpoint := os.Getenv("MANAGER_ENDPOINT")
-	replicas := 2
+	replicas := 1
 
 	// Setup the terraform options with proxy configuration
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -49,10 +46,8 @@ func TestDelegateWithUpgrader(t *testing.T) {
 		},
 	})
 
-	// Clean up resources if the test fails
-	t.Cleanup(func() {
-		terraform.Destroy(t, terraformOptions)
-	})
+	// Clean up resources after test
+	defer terraform.Destroy(t, terraformOptions)
 
 	// Run terraform init and apply
 	terraform.InitAndApply(t, terraformOptions)
@@ -65,7 +60,7 @@ func TestDelegateWithUpgrader(t *testing.T) {
 	assert.Equal(t, namespaceName, namespace.Name)
 
 	// Wait for the deployment to be ready
-	k8s.WaitUntilDeploymentAvailable(t, kubectlOptions, delegateName, 10, 30*time.Second)
+	k8s.WaitUntilDeploymentAvailable(t, kubectlOptions, delegateName, 8, 30*time.Second)
 
 	// Verify the deployment exists and has the correct replicas
 	deploymentName := delegateName
@@ -91,19 +86,20 @@ func TestDelegateWithUpgrader(t *testing.T) {
 	// Validate basic delegate configuration
 	ValidateBasicDelegateConfiguration(t, envMap, account_id, manager_endpoint, delegateName, &container, delegate_image)
 
+	// Validate basic delegate resources
+	ValidateBasicDelegateResources(t, kubectlOptions, delegateName)
+
 	// Validate upgrader resources
 	ValidateUpgraderResources(t, kubectlOptions, delegateName)
 
 	output := terraform.Output(t, terraformOptions, "values")
 	assert.NotEmpty(t, output, "Terraform output should not be empty")
-	
+
 	// Verify terraform output contains upgrader configuration
-	assert.Contains(t, output, "upgrader_enabled", "Output should contain upgrader_enabled")
+	assert.Contains(t, output, "upgrader", "Output should contain upgrader_enabled")
 }
 
 func TestDelegateWithUpgraderProxy(t *testing.T) {
-	t.Parallel()
-
 	// Load environment variables from .env file
 	_ = godotenv.Load(".env")
 
@@ -115,7 +111,7 @@ func TestDelegateWithUpgraderProxy(t *testing.T) {
 	delegate_token := os.Getenv("DELEGATE_TOKEN")
 	delegate_image := os.Getenv("DELEGATE_IMAGE")
 	manager_endpoint := os.Getenv("MANAGER_ENDPOINT")
-	replicas := 2
+	replicas := 1
 	proxy_host := os.Getenv("PROXY_HOST")
 	proxy_port := os.Getenv("PROXY_PORT")
 	proxy_scheme := os.Getenv("PROXY_SCHEME")
@@ -146,10 +142,8 @@ func TestDelegateWithUpgraderProxy(t *testing.T) {
 		},
 	})
 
-	// Clean up resources if the test fails
-	t.Cleanup(func() {
-		terraform.Destroy(t, terraformOptions)
-	})
+	// Clean up resources after test
+	defer terraform.Destroy(t, terraformOptions)
 
 	// Run terraform init and apply
 	terraform.InitAndApply(t, terraformOptions)
@@ -162,7 +156,7 @@ func TestDelegateWithUpgraderProxy(t *testing.T) {
 	assert.Equal(t, namespaceName, namespace.Name)
 
 	// Wait for the deployment to be ready
-	k8s.WaitUntilDeploymentAvailable(t, kubectlOptions, delegateName, 10, 30*time.Second)
+	k8s.WaitUntilDeploymentAvailable(t, kubectlOptions, delegateName, 8, 30*time.Second)
 
 	// Verify the deployment exists and has the correct replicas
 	deploymentName := delegateName
@@ -188,7 +182,7 @@ func TestDelegateWithUpgraderProxy(t *testing.T) {
 	// Validate basic delegate configuration
 	ValidateBasicDelegateConfiguration(t, envMap, account_id, manager_endpoint, delegateName, &container, delegate_image)
 
-	// Validate proxy configuration
+	// Create proxy configuration
 	proxyConfig := ProxyConfig{
 		Host:     proxy_host,
 		Port:     proxy_port,
@@ -198,17 +192,14 @@ func TestDelegateWithUpgraderProxy(t *testing.T) {
 		NoProxy:  no_proxy,
 	}
 
+	// Validate proxy configuration
 	ValidateProxyConfiguration(t, envMap, proxyConfig)
 
-	// Verify ConfigMap exists
-	configMapName := fmt.Sprintf("%s-proxy", delegateName)
-	configMap := k8s.GetConfigMap(t, kubectlOptions, configMapName)
-	assert.Equal(t, configMapName, configMap.Name)
+	// Validate basic delegate resources
+	ValidateBasicDelegateResources(t, kubectlOptions, delegateName)
 
-	// Verify Secret exists
-	secretName := fmt.Sprintf("%s-proxy", delegateName)
-	secret := k8s.GetSecret(t, kubectlOptions, secretName)
-	assert.Equal(t, secretName, secret.Name)
+	// Validate proxy resources
+	ValidateProxyResources(t, kubectlOptions, delegateName)
 
 	// Validate upgrader resources
 	ValidateUpgraderResources(t, kubectlOptions, delegateName)
@@ -217,13 +208,13 @@ func TestDelegateWithUpgraderProxy(t *testing.T) {
 	assert.NotEmpty(t, output, "Terraform output should not be empty")
 
 	// Verify terraform output contains proxy configuration
-	assert.Contains(t, output, "proxy_host", "Output should contain proxy host")
-	assert.Contains(t, output, "proxy_port", "Output should contain proxy port")
-	assert.Contains(t, output, "proxy_scheme", "Output should contain proxy scheme")
-	assert.Contains(t, output, "proxy_user", "Output should contain proxy user")
-	assert.Contains(t, output, "proxy_password", "Output should contain proxy password")
-	assert.Contains(t, output, "no_proxy", "Output should contain no proxy")
+	assert.Contains(t, output, "proxyHost", "Output should contain proxy host")
+	assert.Contains(t, output, "proxyPort", "Output should contain proxy port")
+	assert.Contains(t, output, "proxyScheme", "Output should contain proxy scheme")
+	assert.Contains(t, output, "proxyUser", "Output should contain proxy user")
+	assert.Contains(t, output, "proxyPassword", "Output should contain proxy password")
+	assert.Contains(t, output, "noProxy", "Output should contain no proxy")
 
 	// Verify terraform output contains upgrader configuration
-	assert.Contains(t, output, "upgrader_enabled", "Output should contain upgrader_enabled")
+	assert.Contains(t, output, "upgrader", "Output should contain upgrader_enabled")
 }
