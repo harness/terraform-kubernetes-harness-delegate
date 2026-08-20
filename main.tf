@@ -8,33 +8,35 @@ resource "helm_release" "delegate" {
   values = [data.utils_deep_merge_yaml.values.output]
 
   # ref https://github.com/hashicorp/terraform-provider-helm/pull/480
-  set_sensitive {
-    name  = "delegateToken"
-    value = var.delegate_token
-    type = "string"
-  }
+  set_sensitive = [
+    {
+      name  = "delegateToken"
+      value = var.delegate_token
+      type  = "string"
+    }
+  ]
 
 }
 
 locals {
   values = yamlencode({
-    accountId            = var.account_id,
-    managerEndpoint      = var.manager_endpoint,
-    namespace            = var.namespace,
-    delegateName         = var.delegate_name,
-    delegateDockerImage  = var.delegate_image,
-    replicas             = var.replicas,
-    upgrader             = { enabled = var.upgrader_enabled }
-    nextGen              = var.next_gen,
-    proxyUser            = var.proxy_user,
-    proxyPassword        = var.proxy_password,
-    proxyHost            = var.proxy_host,
-    proxyPort            = var.proxy_port,
-    proxyScheme          = var.proxy_scheme,
-    noProxy              = var.no_proxy,
-    initScript           = var.init_script,
-    deployMode           = var.deploy_mode
-    mTLS                 = { secretName = var.mtls_secret_name } 
+    accountId           = var.account_id,
+    managerEndpoint     = var.manager_endpoint,
+    namespace           = var.namespace,
+    delegateName        = var.delegate_name,
+    delegateDockerImage = var.delegate_image,
+    replicas            = var.replicas,
+    upgrader            = { enabled = var.upgrader_enabled }
+    nextGen             = var.next_gen,
+    proxyUser           = var.proxy_user,
+    proxyPassword       = var.proxy_password,
+    proxyHost           = var.proxy_host,
+    proxyPort           = var.proxy_port,
+    proxyScheme         = var.proxy_scheme,
+    noProxy             = var.no_proxy,
+    initScript          = var.init_script,
+    deployMode          = var.deploy_mode
+    mTLS                = { secretName = var.mtls_secret_name }
   })
 }
 

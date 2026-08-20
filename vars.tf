@@ -78,14 +78,14 @@ variable "proxy_user" {
   description = "The proxy user to use for the Harness delegate."
   type        = string
   // sensitive = true
-  default     = ""
+  default = ""
 }
 
 variable "proxy_password" {
   description = "The proxy password to use for the Harness delegate."
   type        = string
   // sensitive = true
-  default     = ""
+  default = ""
 }
 
 variable "proxy_host" {
