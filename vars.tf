@@ -16,6 +16,12 @@ variable "namespace" {
   default     = "harness-delegate-ng"
 }
 
+variable "timeout" {
+  description = "Time in seconds to wait for delegate to become healthy"
+  type        = number
+  default     = null
+}
+
 variable "delegate_image" {
   description = "The image of delegate."
   type        = string
@@ -78,14 +84,14 @@ variable "proxy_user" {
   description = "The proxy user to use for the Harness delegate."
   type        = string
   // sensitive = true
-  default     = ""
+  default = ""
 }
 
 variable "proxy_password" {
   description = "The proxy password to use for the Harness delegate."
   type        = string
   // sensitive = true
-  default     = ""
+  default = ""
 }
 
 variable "proxy_host" {
