@@ -9,11 +9,13 @@ resource "helm_release" "delegate" {
   values = [data.utils_deep_merge_yaml.values.output]
 
   # ref https://github.com/hashicorp/terraform-provider-helm/pull/480
-  set_sensitive {
-    name  = "delegateToken"
-    value = var.delegate_token
-    type  = "string"
-  }
+  set_sensitive = [
+    {
+      name  = "delegateToken"
+      value = var.delegate_token
+      type  = "string"
+    }
+  ]
 
 }
 
