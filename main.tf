@@ -2,7 +2,7 @@ resource "helm_release" "delegate" {
   name             = var.delegate_name
   repository       = var.helm_repository
   chart            = "harness-delegate-ng"
-  version          = var.version
+  version          = var.chart_version
   namespace        = var.namespace
   create_namespace = var.create_namespace
   timeout          = var.timeout
