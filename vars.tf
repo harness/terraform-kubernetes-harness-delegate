@@ -10,6 +10,12 @@ variable "helm_repository" {
   default     = "https://app.harness.io/storage/harness-download/delegate-helm-chart/"
 }
 
+variable "version" {
+  description = "The version of the Harness Delegate chart to use; leave empty for latest"
+  type        = string
+  default     = null
+}
+
 variable "namespace" {
   description = "The namespace to deploy the Harness delegate to."
   type        = string
